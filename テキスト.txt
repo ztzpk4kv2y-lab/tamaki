@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>アンケートシステム</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #333; }
+
+    /* ナビ */
+    nav {
+      background: #2c3e50; color: white; padding: 14px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    nav h1 { font-size: 1.2rem; }
+    nav button {
+      background: #3498db; color: white; border: none;
+      padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;
+    }
+    nav button:hover { background: #2980b9; }
+
+    /* ページ切替 */
+    .page { display: none; max-width: 900px; margin: 30px auto; padding: 0 16px; }
+    .page.active { display: block; }
+
+    /* カード */
+    .card {
+      background: white; border-radius: 12px; padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 20px;
+    }
+    .card h2 { margin-bottom: 16px; color: #2c3e50; font-size: 1.2rem; }
+    .card h3 { margin-bottom: 12px; color: #34495e; font-size: 1rem; }
+
+    /* フォーム */
+    label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: #555; }
+    input[type="text"], textarea, select {
+      width: 100%; padding: 10px 14px; border: 1.5px solid #ddd;
+      border-radius: 8px; font-size: 0.95rem; transition: border 0.2s;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus {
+      outline: none; border-color: #3498db;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .form-group { margin-bottom: 16px; }
+    .optional { font-weight: normal; color: #999; font-size: 0.8rem; margin-left: 6px; }
+
+    /* ボタン */
+    .btn {
+      padding: 10px 20px; border: none; border-radius: 8px;
+      cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: 0.2s;
+    }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover { background: #2980b9; }
+    .btn-success { background: #2ecc71; color: white; }
+    .btn-success:hover { background: #27ae60; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-secondary { background: #95a5a6; color: white; }
+    .btn-secondary:hover { background: #7f8c8d; }
+    .btn-sm { padding: 6px 12px; font-size: 0.82rem; }
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* アンケート一覧 */
+    .survey-list { display: grid; gap: 16px; }
+    .survey-item {
+      background: white; border-radius: 10px; padding: 18px 20px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.07);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    .survey-item h3 { font-size: 1rem; color: #2c3e50; }
+    .survey-item p { font-size: 0.82rem; color: #999; margin-top: 4px; }
+
+    /* 質問エディタ */
+    .question-editor {
+      border: 1.5px solid #e0e0e0; border-radius: 10px;
+      padding: 16px; margin-bottom: 12px; background: #fafafa;
+    }
+    .question-editor .q-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+    }
+    .question-editor .q-header span { font-weight: 600; color: #555; font-size: 0.9rem; }
+    .choices-area { margin-top: 10px; }
+    .choice-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .choice-row input { flex: 1; }
+    .choice-row button { flex-shrink: 0; }
+
+    /* 回答フォーム */
+    .question-block { margin-bottom: 24px; }
+    .question-block .q-title { font-weight: 600; margin-bottom: 10px; color: #2c3e50; }
+    .question-block .q-title .required-mark { color: #e74c3c; margin-left: 4px; }
+    .radio-group label, .checkbox-group label {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border: 1.5px solid #eee; border-radius: 8px;
+      margin-bottom: 6px; cursor: pointer; font-weight: normal;
+      transition: 0.15s; font-size: 0.93rem;
+    }
+    .radio-group label:hover, .checkbox-group label:hover { border-color: #3498db; background: #f0f8ff; }
+    .radio-group input, .checkbox-group input { accent-color: #3498db; width: 16px; height: 16px; }
+
+    /* 集計 */
+    .stats-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .stats-table th { background: #2c3e50; color: white; padding: 10px 14px; text-align: left; }
+    .stats-table td { padding: 10px 14px; border-bottom: 1px solid #eee; }
+    .stats-table tr:hover td { background: #f9f9f9; }
+    .bar-wrap { background: #eee; border-radius: 4px; height: 14px; overflow: hidden; min-width: 100px; }
+    .bar { background: #3498db; height: 100%; border-radius: 4px; transition: width 0.4s; }
+
+    /* タブ */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; }
+    .tab-btn {
+      padding: 10px 18px; border: none; background: none;
+      cursor: pointer; font-size: 0.9rem; color: #777; border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .tab-btn.active { color: #3498db; border-bottom-color: #3498db; font-weight: 600; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* バッジ */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 0.78rem; font-weight: 600;
+    }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+
+    /* トースト */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #2ecc71; color: white; padding: 12px 20px;
+      border-radius: 8px; font-size: 0.9rem; display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999;
+    }
+
+    /* レスポンシブ */
+    @media (max-width: 600px) {
+      .survey-item { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ナビ -->
+<nav>
+  <h1>📋 アンケートシステム</h1>
+  <button onclick="toggleAdmin()">⚙️ 管理者画面</button>
+</nav>
+
+<!-- トースト通知 -->
+<div id="toast"></div>
+
+<!-- ========== 回答者ページ ========== -->
+<div id="page-answer" class="page active">
+  <div class="card">
+    <h2>📝 アンケート一覧</h2>
+    <p style="color:#888;font-size:0.9rem;margin-bottom:16px;">回答するアンケートを選んでください。</p>
+    <div id="answer-survey-list" class="survey-list"></div>
+  </div>
+</div>
+
+<!-- 回答フォーム -->
+<div id="page-form" class="page">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <h2 id="form-title">アンケート</h2>
+      <button class="btn btn-secondary btn-sm" onclick="showPage('page-answer')">← 一覧に戻る</button>
+    </div>
+    <div class="form-group">
+      <label>お名前 <span class="optional">（任意）</span></label>
+      <input type="text" id="respondent-name" placeholder="未入力の場合は「匿名」として記録されます" />
+    </div>
+    <div id="form-questions"></div>
+    <div class="btn-group" style="margin-top:20px;">
+      <button class="btn btn-success" onclick="submitAnswer()">✅ 回答を送信する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 管理者ページ ========== -->
+<div id="page-admin" class="page">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchAdminTab('tab-surveys')">📋 アンケート管理</button>
+    <button class="tab-btn" onclick="switchAdminTab('tab-results')">📊 集計・回答一覧</button>
+  </div>
+
+  <!-- アンケート管理タブ -->
+  <div id="tab-surveys" class="tab-content active">
+    <div class="card">
+      <h2>➕ 新しいアンケートを作成</h2>
+      <div class="form-group">
+        <label>アンケートタイトル</label>
+        <input type="text" id="new-survey-title" placeholder="例：社内満足度調査2024" />
+      </div>
+      <div class="form-group">
+        <label>説明（任意）</label>
+        <input type="text" id="new-survey-desc" placeholder="アンケートの説明を入力" />
+      </div>
+
+      <h3 style="margin-bottom:12px;">質問を追加</h3>
+      <div id="question-list"></div>
+
+      <div class="btn-group" style="margin-bottom:16px;">
+        <button class="btn btn-secondary btn-sm" onclick="addQuestion('radio')">＋ 単一選択</button>
+        <button class="btn btn-secondary btn-sm" onclick="addQuestion('checkbox')">＋ 複数選択</button>
+        <button class="btn btn-secondary btn-sm" onclick="addQuestion('text')">＋ 自由記述</button>
+      </div>
+
+      <button class="btn btn-success" onclick="saveSurvey()">💾 アンケートを保存</button>
+    </div>
+
+    <div class="card">
+      <h2>📋 作成済みアンケート</h2>
+      <div id="admin-survey-list" class="survey-list"></div>
+    </div>
+  </div>
+
+  <!-- 集計タブ -->
+  <div id="tab-results" class="tab-content">
+    <div class="card">
+      <h2>📊 集計するアンケートを選択</h2>
+      <select id="result-survey-select" onchange="loadResults()">
+        <option value="">-- アンケートを選択 --</option>
+      </select>
+    </div>
+    <div id="result-area"></div>
+  </div>
+</div>
+
+<script>
+// ========== データ管理 ==========
+function getData(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; }
+}
+function setData(key, val) {
+  localStorage.setItem(key, JSON.stringify(val));
+}
+function getSurveys() { return getData('surveys'); }
+function getAnswers() { return getData('answers'); }
+function saveSurveys(d) { setData('surveys', d); }
+function saveAnswers(d) { setData('answers', d); }
+
+// ========== ページ切替 ==========
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'page-answer') renderAnswerList();
+  if (id === 'page-admin') { renderAdminList(); renderResultSelect(); }
+}
+function toggleAdmin() {
+  const admin = document.getElementById('page-admin');
+  if (admin.classList.contains('active')) {
+    showPage('page-answer');
+  } else {
+    showPage('page-admin');
+  }
+}
+function switchAdminTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  event.target.classList.add('active');
+  if (tabId === 'tab-results') renderResultSelect();
+}
+
+// ========== トースト ==========
+function toast(msg, color = '#2ecc71') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ========== 管理者：質問エディタ ==========
+let questions = [];
+let editingId = null;
+
+function addQuestion(type) {
+  const q = { id: Date.now(), type, text: '', required: false, choices: type !== 'text' ? [''] : [] };
+  questions.push(q);
+  renderQuestionEditors();
+}
+function removeQuestion(id) {
+  questions = questions.filter(q => q.id !== id);
+  renderQuestionEditors();
+}
+function addChoice(qid) {
+  const q = questions.find(q => q.id === qid);
+  if (q) { q.choices.push(''); renderQuestionEditors(); }
+}
+function removeChoice(qid, idx) {
+  const q = questions.find(q => q.id === qid);
+  if (q && q.choices.length > 1) { q.choices.splice(idx, 1); renderQuestionEditors(); }
+}
+function syncQuestion(id) {
+  const q = questions.find(q => q.id === id);
+  if (!q) return;
+  q.text = document.getElementById(`qt-${id}`).value;
+  q.required = document.getElementById(`qr-${id}`).checked;
+  if (q.type !== 'text') {
+    q.choices = Array.from(document.querySelectorAll(`.choice-input-${id}`)).map(i => i.value);
+  }
+}
+function renderQuestionEditors() {
+  const container = document.getElementById('question-list');
+  if (questions.length === 0) {
+    container.innerHTML = '<p style="color:#aaa;font-size:0.9rem;margin-bottom:12px;">質問がまだありません。下のボタンで追加してください。</p>';
+    return;
+  }
+  container.innerHTML = questions.map((q, idx) => `
+    <div class="question-editor">
+      <div class="q-header">
+        <span>Q${idx+1}．
+          ${ q.type === 'radio' ? '🔘 単一選択' : q.type === 'checkbox' ? '☑️ 複数選択' : '✏️ 自由記述' }
+        </span>
+        <button class="btn btn-danger btn-sm" onclick="removeQuestion(${q.id})">削除</button>
+      </div>
+      <div class="form-group">
+        <label>質問文</label>
+        <input type="text" id="qt-${q.id}" value="${escHtml(q.text)}" placeholder="質問を入力" oninput="syncQuestion(${q.id})" />
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.9rem;margin-bottom:12px;">
+        <input type="checkbox" id="qr-${q.id}" ${q.required ? 'checked' : ''} onchange="syncQuestion(${q.id})" style="width:16px;height:16px;accent-color:#e74c3c;" />
+        <span>必須項目にする</span>
+      </label>
+      ${ q.type !== 'text' ? `
+        <div class="choices-area">
+          <label>選択肢</label>
+          ${q.choices.map((c, i) => `
+            <div class="choice-row">
+              <input type="text" class="choice-input-${q.id}" value="${escHtml(c)}" placeholder="選択肢 ${i+1}" oninput="syncQuestion(${q.id})" />
+              <button class="btn btn-danger btn-sm" onclick="removeChoice(${q.id},${i})" ${q.choices.length<=1?'disabled':''}>✕</button>
+            </div>
+          `).join('')}
+          <button class="btn btn-secondary btn-sm" onclick="addChoice(${q.id})" style="margin-top:4px;">＋ 選択肢を追加</button>
+        </div>
+      ` : '' }
+    </div>
+  `).join('');
+}
+
+// ========== アンケート保存 ==========
+function saveSurvey() {
+  const title = document.getElementById('new-survey-title').value.trim();
+  if (!title) { toast('タイトルを入力してください', '#e74c3c'); return; }
+  if (questions.length === 0) { toast('質問を1つ以上追加してください', '#e74c3c'); return; }
+  questions.forEach(q => syncQuestion(q.id));
+  const surveys = getSurveys();
+  if (editingId) {
+    const idx = surveys.findIndex(s => s.id === editingId);
+    if (idx !== -1) {
+      surveys[idx] = { ...surveys[idx], title, desc: document.getElementById('new-survey-desc').value.trim(), questions: JSON.parse(JSON.stringify(questions)) };
+    }
+    editingId = null;
+  } else {
+    surveys.push({
+      id: Date.now(), title,
+      desc: document.getElementById('new-survey-desc').value.trim(),
+      questions: JSON.parse(JSON.stringify(questions)),
+      createdAt: new Date().toLocaleDateString('ja-JP')
+    });
+  }
+  saveSurveys(surveys);
+  document.getElementById('new-survey-title').value = '';
+  document.getElementById('new-survey-desc').value = '';
+  questions = [];
+  renderQuestionEditors();
+  renderAdminList();
+  renderResultSelect();
+  toast('✅ アンケートを保存しました！');
+}
+
+// ========== 管理者リスト ==========
+function renderAdminList() {
+  const surveys = getSurveys();
+  const container = document.getElementById('admin-survey-list');
+  if (surveys.length === 0) {
+    container.innerHTML = '<p style="color:#aaa;font-size:0.9rem;">まだアンケートがありません。</p>';
+    return;
+  }
+  const answers = getAnswers();
+  container.innerHTML = surveys.map(s => {
+    const count = answers.filter(a => a.surveyId === s.id).length;
+    return `
+      <div class="survey-item">
+        <div>
+          <h3>${escHtml(s.title)}</h3>
+          <p>${escHtml(s.desc || '')} &nbsp;作成日：${s.createdAt} &nbsp;
+            <span class="badge badge-blue">${s.questions.length}問</span>
+            <span class="badge badge-green">${count}件の回答</span>
+          </p>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary btn-sm" onclick="editSurvey(${s.id})">✏️ 編集</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSurvey(${s.id})">🗑️ 削除</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function editSurvey(id) {
+  const surveys = getSurveys();
+  const s = surveys.find(s => s.id === id);
+  if (!s) return;
+  editingId = id;
+  document.getElementById('new-survey-title').value = s.title;
+  document.getElementById('new-survey-desc').value = s.desc || '';
+  questions = JSON.parse(JSON.stringify(s.questions));
+  renderQuestionEditors();
+  document.querySelector('#tab-surveys').scrollIntoView({ behavior: 'smooth' });
+  toast('📝 編集モードです。変更後に保存してください。', '#f39c12');
+}
+
+function deleteSurvey(id) {
+  if (!confirm('このアンケートを削除しますか？（回答データも削除されます）')) return;
+  let surveys = getSurveys();
+  surveys = surveys.filter(s => s.id !== id);
+  saveSurveys(surveys);
+  let answers = getAnswers();
+  answers = answers.filter(a => a.surveyId !== id);
+  saveAnswers(answers);
+  renderAdminList();
+  renderResultSelect();
+  toast('🗑️ 削除しました', '#e74c3c');
+}
+
+// ========== 回答者：アンケート一覧 ==========
+function renderAnswerList() {
+  const surveys = getSurveys();
+  const container = document.getElementById('answer-survey-list');
+  if (surveys.length === 0) {
+    container.innerHTML = '<p style="color:#aaa;">現在回答できるアンケートはありません。</p>';
+    return;
+  }
+  container.innerHTML = surveys.map(s => `
+    <div class="survey-item">
+      <div>
+        <h3>${escHtml(s.title)}</h3>
+        <p>${escHtml(s.desc || '')}</p>
+      </div>
+      <button class="btn btn-primary" onclick="openForm(${s.id})">回答する →</button>
+    </div>
+  `).join('');
+}
+
+// ========== 回答フォーム ==========
+let currentSurveyId = null;
+
+function openForm(id) {
+  const surveys = getSurveys();
+  const s = surveys.find(s => s.id === id);
+  if (!s) return;
+  currentSurveyId = id;
+  document.getElementById('form-title').textContent = s.title;
+  document.getElementById('respondent-name').value = '';
+  const container = document.getElementById('form-questions');
+  container.innerHTML = s.questions.map((q, idx) => `
+    <div class="question-block">
+      <div class="q-title">
+        Q${idx+1}. ${escHtml(q.text)}
+        ${q.required ? '<span class="required-mark">*必須</span>' : '<span style="color:#aaa;font-size:0.8rem;"> (任意)</span>'}
+      </div>
+      ${ q.type === 'radio' ? `
+        <div class="radio-group" id="q-${q.id}">
+          ${q.choices.map((c, i) => `
+            <label>
+              <input type="radio" name="q${q.id}" value="${escHtml(c)}" />
+              ${escHtml(c)}
+            </label>
+          `).join('')}
+        </div>
+      ` : q.type === 'checkbox' ? `
+        <div class="checkbox-group" id="q-${q.id}">
+          ${q.choices.map((c, i) => `
+            <label>
+              <input type="checkbox" name="q${q.id}" value="${escHtml(c)}" />
+              ${escHtml(c)}
+            </label>
+          `).join('')}
+        </div>
+      ` : `
+        <textarea id="q-${q.id}" placeholder="自由に記入してください"></textarea>
+      `}
+    </div>
+  `).join('');
+  showPage('page-form');
+}
+
+function submitAnswer() {
+  const surveys = getSurveys();
+  const s = surveys.find(s => s.id === currentSurveyId);
+  if (!s) return;
+  const name = document.getElementById('respondent-name').value.trim() || '匿名';
+  const responses = {};
+  let valid = true;
+
+  for (const q of s.questions) {
+    if (q.type === 'text') {
+      const val = document.getElementById(`q-${q.id}`).value.trim();
+      if (q.required && !val) { valid = false; toast(`「${q.text}」は必須です`, '#e74c3c'); break; }
+      responses[q.id] = val;
+    } else if (q.type === 'radio') {
+      const checked = document.querySelector(`input[name="q${q.id}"]:checked`);
+      if (q.required && !checked) { valid = false; toast(`「${q.text}」は必須です`, '#e74c3c'); break; }
+      responses[q.id] = checked ? checked.value : '';
+    } else if (q.type === 'checkbox') {
+      const checked = Array.from(document.querySelectorAll(`input[name="q${q.id}"]:checked`)).map(i => i.value);
+      if (q.required && checked.length === 0) { valid = false; toast(`「${q.text}」は必須です`, '#e74c3c'); break; }
+      responses[q.id] = checked;
+    }
+  }
+
+  if (!valid) return;
+  const answers = getAnswers();
+  answers.push({ id: Date.now(), surveyId: currentSurveyId, name, responses, submittedAt: new Date().toLocaleString('ja-JP') });
+  saveAnswers(answers);
+  toast('✅ 回答を送信しました！ありがとうございます！');
+  setTimeout(() => showPage('page-answer'), 1500);
+}
+
+// ========== 集計 ==========
+function renderResultSelect() {
+  const surveys = getSurveys();
+  const select = document.getElementById('result-survey-select');
+  const current = select.value;
+  select.innerHTML = '<option value="">-- アンケートを選択 --</option>' +
+    surveys.map(s => `<option value="${s.id}" ${s.id == current ? 'selected' : ''}>${escHtml(s.title)}</option>`).join('');
+  if (current) loadResults();
+}
+
+function loadResults() {
+  const id = parseInt(document.getElementById('result-survey-select').value);
+  const area = document.getElementById('result-area');
+  if (!id) { area.innerHTML = ''; return; }
+  const surveys = getSurveys();
+  const s = surveys.find(s => s.id === id);
+  const answers = getAnswers().filter(a => a.surveyId === id);
+  if (!s) { area.innerHTML = ''; return; }
+
+  if (answers.length === 0) {
+    area.innerHTML = '<div class="card"><p style="color:#aaa;">まだ回答がありません。</p></div>';
+    return;
+  }
+
+  // 名前別集計カード
+  let html = `
+    <div class="card">
+      <h2>👥 名前別 回答一覧（${answers.length}件）</h2>
+      <table class="stats-table">
+        <thead><tr>
+          <th>名前</th>
+          <th>回答日時</th>
+          ${s.questions.map((q,i) => `<th>Q${i+1}. ${escHtml(q.text.substring(0,15))}${q.text.length>15?'…':''}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${answers.map(a => `
+            <tr>
+              <td><strong>${escHtml(a.name)}</strong></td>
+              <td style="white-space:nowrap;font-size:0.82rem;color:#888;">${a.submittedAt}</td>
+              ${s.questions.map(q => {
+                const v = a.responses[q.id];
+                const display = Array.isArray(v) ? v.join('、') : (v || '―');
+                return `<td>${escHtml(display)}</td>`;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // 質問別集計カード
+  html += `<div class="card"><h2>📊 質問別 集計</h2>`;
+  for (const q of s.questions) {
+    html += `<div style="margin-bottom:24px;"><h3>Q. ${escHtml(q.text)}</h3>`;
+    if (q.type === 'text') {
+      const txts = answers.map(a => a.responses[q.id]).filter(v => v);
+      if (txts.length === 0) { html += '<p style="color:#aaa;font-size:0.9rem;">回答なし</p>'; }
+      else {
+        html += '<ul style="margin-left:1.2em;">' + txts.map(t => `<li style="margin-bottom:6px;font-size:0.93rem;">${escHtml(t)}</li>`).join('') + '</ul>';
+      }
+    } else {
+      // 選択肢カウント
+      const tally = {};
+      q.choices.forEach(c => tally[c] = 0);
+      answers.forEach(a => {
+        const v = a.responses[q.id];
+        const vals = Array.isArray(v) ? v : [v];
+        vals.forEach(val => { if (val && tally[val] !== undefined) tally[val]++; });
+      });
+      const total = answers.length;
+      html += '<table class="stats-table" style="margin-top:8px;"><thead><tr><th>選択肢</th><th>票数</th><th>割合</th><th style="min-width:140px;">グラフ</th></tr></thead><tbody>';
+      for (const [choice, count] of Object.entries(tally)) {
+        const pct = total > 0 ? Math.round(count / total * 100) : 0;
+        html += `<tr>
+          <td>${escHtml(choice)}</td>
+          <td><strong>${count}</strong></td>
+          <td>${pct}%</td>
+          <td><div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div></td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  area.innerHTML = html;
+}
+
+// ========== ユーティリティ ==========
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ========== 初期化 ==========
+renderAnswerList();
+renderQuestionEditors();
+</script>
+</body>
+</html>
